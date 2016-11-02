@@ -1,0 +1,6 @@
+bin
+obj
+*.user
+*.suo
+/Tmpver.nsh
+/Setup_PDF2TIF.exe
