@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text;
 using System.Diagnostics;
 using System.IO;
-using FreeImageAPI;
 
 namespace PDF2TIF {
     class Program {
@@ -13,22 +12,35 @@ namespace PDF2TIF {
                 Environment.Exit(1);
             }
             String fppdf = args[0];
-            String fptiff = args[1];
+            String fpOutTiff = args[1];
             String fpprefix = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
-            String fppng = fpprefix + ".png";
-            String fppbm = fpprefix + ".pbm";
-            String fppgm = fpprefix + ".pgm";
+
             int bpp;
             if (!int.TryParse("" + Environment.GetEnvironmentVariable("PDF2TIF_BPP"), out bpp)) {
                 bpp = 24;
             }
+
+            int dpi;
+            if (!int.TryParse("" + Environment.GetEnvironmentVariable("PDF2TIF_DPI"), out dpi)) {
+                dpi = 300;
+            }
+
             bool mono = bpp == 1;
             bool gray = bpp == 8;
             {
                 for (int y = 1; ; y++) {
                     {
-                        ProcessStartInfo psi = new ProcessStartInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "GPL\\pdftoppm.exe")
-                            , " -f " + y + " -singlefile -r 300 " + (mono ? "-mono" : gray ? "-gray" : "-png") + " \"" + fppdf + "\" \"" + fpprefix + "\" ");
+                        ProcessStartInfo psi = new ProcessStartInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "GPL\\pdftoppm.exe"), String.Concat(""
+                            , " -tiff"
+                            , " -tiffcompression deflate"
+                            , " -f ", y.ToString()
+                            , " -singlefile"
+                            , " -r 300"
+                            , " ", (mono ? "-mono" : gray ? "-gray" : "")
+                            , " \"", fppdf, "\""
+                            , " \"", fpprefix, "\""
+                            , " ")
+                            );
                         psi.UseShellExecute = false;
                         psi.RedirectStandardError = true;
                         Process p = Process.Start(psi);
@@ -38,35 +50,17 @@ namespace PDF2TIF {
                     }
 
                     String fpinTif = fpprefix + ".tif";
-                    FIBITMAP dib = mono
-                        ? FreeImage.Load(FREE_IMAGE_FORMAT.FIF_PBM, fppbm, FREE_IMAGE_LOAD_FLAGS.DEFAULT)
-                        : gray
-                            ? FreeImage.Load(FREE_IMAGE_FORMAT.FIF_PGM, fppgm, FREE_IMAGE_LOAD_FLAGS.DEFAULT)
-                            : FreeImage.Load(FREE_IMAGE_FORMAT.FIF_PNG, fppng, FREE_IMAGE_LOAD_FLAGS.DEFAULT)
-                        ;
-                    File.Delete(mono ? fppbm : gray ? fppgm : fppng);
-                    try {
-                        FIMULTIBITMAP tif = FreeImage.OpenMultiBitmap(FREE_IMAGE_FORMAT.FIF_TIFF, fpinTif, true, false, true, FREE_IMAGE_LOAD_FLAGS.DEFAULT);
-                        try {
-                            FreeImage.SetResolutionX(dib, 300);
-                            FreeImage.SetResolutionY(dib, 300);
-                            FreeImage.AppendPage(tif, dib);
-                        }
-                        finally {
-                            FreeImage.CloseMultiBitmap(tif, FREE_IMAGE_SAVE_FLAGS.DEFAULT);
-                        }
-                    }
-                    finally {
-                        FreeImage.Unload(dib);
-                    }
 
                     {
                         ProcessStartInfo psi = new ProcessStartInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "GPL\\tiffcp.exe")
-                            , " " + ((y != 1) ? "-a" : "") + " \"" + fpinTif + "\" \"" + fptiff + "\" ");
+                            , " " + ((y != 1) ? "-a" : "") + " \"" + fpinTif + "\" \"" + fpOutTiff + "\" ");
                         psi.UseShellExecute = false;
                         Process p = Process.Start(psi);
                         p.WaitForExit();
                         if (p.ExitCode != 0) {
+                            if (File.Exists(fpinTif)) {
+                                File.Delete(fpinTif);
+                            }
                             Environment.ExitCode = 1;
                             return;
                         }
