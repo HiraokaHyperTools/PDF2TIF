@@ -9,7 +9,7 @@
 
 !define APP "PDF2TIF"
 !define COM "HIRAOKA HYPERS TOOLS, Inc."
-!system 'DefineAsmVer.exe "bin\x86\DEBUG\${APP}.exe" "!define VER ""[SVER]"" " > Tmpver.nsh'
+!system 'DefineAsmVer.exe "bin\DEBUG\${APP}.exe" "!define VER ""[SVER]"" " > Tmpver.nsh'
 !include "Tmpver.nsh"
 
 ; The name of the installer
@@ -53,7 +53,7 @@ Section "PDF2TIF"
   SetOutPath "$INSTDIR"
   
   ; Put file there
-  File /r /x "*.vshost.*" "bin\x86\DEBUG\*.*"
+  File /r /x "*.vshost.*" "bin\DEBUG\*.*"
 
   SetOutPath "$INSTDIR\GPL\share"
   File /r "share\*.*"

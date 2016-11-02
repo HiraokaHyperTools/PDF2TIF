@@ -32,15 +32,14 @@ namespace PDF2TIF {
                     {
                         ProcessStartInfo psi = new ProcessStartInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "GPL\\pdftoppm.exe"), String.Concat(""
                             , " -tiff"
-                            , " -tiffcompression deflate"
                             , " -f ", y.ToString()
                             , " -singlefile"
-                            , " -r 300"
+                            , " -r " + dpi
                             , " ", (mono ? "-mono" : gray ? "-gray" : "")
                             , " \"", fppdf, "\""
                             , " \"", fpprefix, "\""
-                            , " ")
-                            );
+                            , " "
+                            ));
                         psi.UseShellExecute = false;
                         psi.RedirectStandardError = true;
                         Process p = Process.Start(psi);
@@ -52,8 +51,12 @@ namespace PDF2TIF {
                     String fpinTif = fpprefix + ".tif";
 
                     {
-                        ProcessStartInfo psi = new ProcessStartInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "GPL\\tiffcp.exe")
-                            , " " + ((y != 1) ? "-a" : "") + " \"" + fpinTif + "\" \"" + fpOutTiff + "\" ");
+                        ProcessStartInfo psi = new ProcessStartInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "GPL\\tiffcp.exe"), String.Concat(""
+                            , " ", ((y != 1) ? "-a" : "")
+                            , " -c ", (mono ? "g4" : gray ? "lzw" : "lzw")
+                            , " \"" + fpinTif + "\""
+                            , " \"" + fpOutTiff + "\" "
+                            ));
                         psi.UseShellExecute = false;
                         Process p = Process.Start(psi);
                         p.WaitForExit();
