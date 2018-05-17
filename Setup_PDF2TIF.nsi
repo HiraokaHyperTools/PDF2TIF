@@ -12,6 +12,9 @@
 !system 'DefineAsmVer.exe "bin\DEBUG\${APP}.exe" "!define VER ""[SVER]"" " > Tmpver.nsh'
 !include "Tmpver.nsh"
 
+!system 'MySign "bin\DEBUG\${APP}.exe"'
+!finalize 'MySign "%1"'
+
 ; The name of the installer
 Name "${APP} ${VER}"
 
