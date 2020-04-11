@@ -7,6 +7,8 @@
 
 ;--------------------------------
 
+Unicode true
+
 !define APP "PDF2TIF"
 !define COM "HIRAOKA HYPERS TOOLS, Inc."
 !system 'DefineAsmVer.exe "bin\DEBUG\${APP}.exe" "!define VER ""[SVER]"" " > Tmpver.nsh'
@@ -30,6 +32,8 @@ InstallDirRegKey HKLM "Software\${COM}\${APP}" "Install_Dir"
 
 ; Request application privileges for Windows Vista
 RequestExecutionLevel admin
+
+XPStyle on
 
 ;--------------------------------
 

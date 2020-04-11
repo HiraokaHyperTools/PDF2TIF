@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Text;
 using System.Diagnostics;
 using System.IO;
+using PDF2TIF.Utils;
 
 namespace PDF2TIF
 {
     class Program
     {
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
             if (args.Length < 2)
             {
@@ -17,7 +18,7 @@ namespace PDF2TIF
                 Console.Error.WriteLine("PDF2TIF input.pdf output{}.png");
                 Console.Error.WriteLine("PDF2TIF input.pdf output{}.jpg");
                 Console.Error.WriteLine("PDF2TIF input.pdf output{}.ppm");
-                Environment.Exit(1);
+                return 1;
             }
             String fppdf = args[0];
             String fpOutTiff = args[1];
@@ -35,22 +36,44 @@ namespace PDF2TIF
                 dpi = 300;
             }
 
+            bool usePageNumPlaceHolder = fpOutTiff.Contains("{}");
+
             string fileFormatOption = "-tiff";
 
             if (fpOutTiff.ToLowerInvariant().EndsWith(".png"))
             {
                 fileFormatOption = "-png";
+
+                if (!usePageNumPlaceHolder)
+                {
+                    Console.Error.WriteLine("png output needs \"{}\" place holder included!");
+                    return 1;
+                }
             }
             else if (fpOutTiff.ToLowerInvariant().EndsWith(".jpg"))
             {
                 fileFormatOption = "-jpeg";
+
+                if (!usePageNumPlaceHolder)
+                {
+                    Console.Error.WriteLine("jpeg output needs \"{}\" place holder included!");
+                    return 1;
+                }
             }
-            else if (fpOutTiff.ToLowerInvariant().EndsWith(".ppm"))
+            else if (false
+                || fpOutTiff.ToLowerInvariant().EndsWith(".ppm")
+                || fpOutTiff.ToLowerInvariant().EndsWith(".pgm")
+                || fpOutTiff.ToLowerInvariant().EndsWith(".pbm")
+            )
             {
                 fileFormatOption = "";
-            }
 
-            bool usePageNumPlaceHolder = fpOutTiff.Contains("{}");
+                if (!usePageNumPlaceHolder)
+                {
+                    Console.Error.WriteLine("ppm/pgm/pbm outputs need \"{}\" place holder included!");
+                    return 1;
+                }
+            }
 
             bool mono = bpp == 1;
             bool gray = bpp == 8;
@@ -73,9 +96,19 @@ namespace PDF2TIF
                             psi.UseShellExecute = false;
                             psi.RedirectStandardError = true;
                             Process p = Process.Start(psi);
-                            System.Threading.ThreadPool.QueueUserWorkItem(delegate { p.StandardError.ReadToEnd(); });
+                            string stdErr = "";
+                            System.Threading.ThreadPool.QueueUserWorkItem(delegate { stdErr = p.StandardError.ReadToEnd(); });
                             p.WaitForExit();
                             if (p.ExitCode == 99) break;
+                            if (p.ExitCode != 0)
+                            {
+                                Console.Error.WriteLine("pdftoppm.exe failed {0}", p.ExitCode);
+                                Console.Error.WriteLine(stdErr);
+
+                                FileUtils.DeleteFileIfExists(fpOutTiff);
+
+                                return 1;
+                            }
                         }
                     }
                     else
@@ -94,9 +127,19 @@ namespace PDF2TIF
                             psi.UseShellExecute = false;
                             psi.RedirectStandardError = true;
                             Process p = Process.Start(psi);
-                            System.Threading.ThreadPool.QueueUserWorkItem(delegate { p.StandardError.ReadToEnd(); });
+                            string stdErr = "";
+                            System.Threading.ThreadPool.QueueUserWorkItem(delegate { stdErr = p.StandardError.ReadToEnd(); });
                             p.WaitForExit();
                             if (p.ExitCode == 99) break;
+                            if (p.ExitCode != 0)
+                            {
+                                Console.Error.WriteLine("pdftoppm.exe exited on error code {0}", p.ExitCode);
+                                Console.Error.WriteLine(stdErr);
+
+                                FileUtils.DeleteFileIfExists(fpOutTiff);
+
+                                return 1;
+                            }
                         }
 
                         String fpinTif = fpprefix + ".tif";
@@ -109,16 +152,20 @@ namespace PDF2TIF
                                 , " \"" + fpOutTiff + "\" "
                                 ));
                             psi.UseShellExecute = false;
+                            psi.RedirectStandardError = true;
                             Process p = Process.Start(psi);
+                            string stdErr = "";
+                            System.Threading.ThreadPool.QueueUserWorkItem(delegate { stdErr = p.StandardError.ReadToEnd(); });
                             p.WaitForExit();
                             if (p.ExitCode != 0)
                             {
-                                if (File.Exists(fpinTif))
-                                {
-                                    File.Delete(fpinTif);
-                                }
-                                Environment.ExitCode = 1;
-                                return;
+                                Console.Error.WriteLine("tiffcp.exe exited on error code {0}", p.ExitCode);
+                                Console.Error.WriteLine(stdErr);
+
+                                FileUtils.DeleteFileIfExists(fpinTif);
+                                FileUtils.DeleteFileIfExists(fpOutTiff);
+
+                                return 1;
                             }
                         }
 
@@ -126,6 +173,8 @@ namespace PDF2TIF
                     }
                 }
             }
+
+            return 0;
         }
 
         static string ExcludeExtension(string filePath)
